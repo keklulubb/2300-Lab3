@@ -9,17 +9,18 @@ MyIterator::MyIterator(Node* some_node)//constructs an iterator
 
 MyIterator& MyIterator::operator++() //prefix
 {
-    if (current_node->next_row != nullptr) {
-        // If there is a next element in the current row, move to it
-        current_node = current_node->next_row;
+    if (current_node->next_col != nullptr) {
+        // If there is a next element in the current column, move to it
+        current_node = current_node->next_col;
     }
     else {
-        // If there is no next element in the current row, move to the first element of the next row
-        row_start = row_start->next_col;
+        // If there is no next element in the current column, move to the first element of the next column
+        row_start = row_start->next_row;
         current_node = row_start;
     }
     return *this;
 }
+
 
 MyIterator MyIterator::operator++(int dummy) //postfix
 {
