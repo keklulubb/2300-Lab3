@@ -51,6 +51,10 @@ public:
         return MyIterator(head);
     }
    
+    MyIterator end() const
+    {
+        return MyIterator(nullptr);
+    }
 };
 
 class MyIterator : public std::iterator<std::forward_iterator_tag, int>

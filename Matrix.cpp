@@ -9,18 +9,17 @@ MyIterator::MyIterator(Node* some_node)//constructs an iterator
 
 MyIterator& MyIterator::operator++() //prefix
 {
-    if (current_node->next_col != nullptr) {
-        // If there is a next element in the current column, move to it
-        current_node = current_node->next_col;
+    if (current_node->next_row != nullptr) {
+        // If there is a next element in the current row, move to it
+        current_node = current_node->next_row;
     }
     else {
-        // If there is no next element in the current column, move to the first element of the next column
-        row_start = row_start->next_row;
+        // If there is no next element in the current row, move to the first element of the next row
+        row_start = row_start->next_col;
         current_node = row_start;
     }
     return *this;
 }
-
 
 MyIterator MyIterator::operator++(int dummy) //postfix
 {
@@ -167,12 +166,12 @@ void Matrix::clear()//clears the matrix
     }
 }
 
-int Matrix::getColNum() const
+int Matrix::getColNum() const//getter for number of columns
 {
     return num_cols;
 }
 
-int Matrix::getRowNum() const
+int Matrix::getRowNum() const//getter for number of rows
 {
     return num_rows;
 }
@@ -218,32 +217,121 @@ int* Matrix::getCol(int col_num) const//returns a column
 
 Matrix& Matrix::transpose()//gives the transpose of the matrix
 {
-    int col = this->num_rows;
-    int row = this->num_cols;
-    int** current_row = new int* [row];
-    int trans_array[MAX][MAX]; // create a 2D array for the transpose of 4 row and 10 column
+    const int col = num_rows;
+    const int row = num_cols;
 
-    int i = 0;
-    while (i < this->num_rows)
-    {
-        current_row[i] = this->getRow(i); // get the current row
-        for (int j = 0; j < this->num_cols; j++)
+    int current_row[MAX][MAX];
+    int trans_array[MAX][MAX]; // create a 2D array for the transpose 
+
+    for (int j = 0; j < num_rows; j++) {
+        int* hi = getRow(j);
+
+        for (int a = 0; a < num_cols; a++)
         {
-            trans_array[j][i] = current_row[i][j]; // assign the values to the transpose array
-        }
-        i++;
-    }
+            current_row[a][j] = hi[a];
+            trans_array[j][a] = current_row[a][j]; // assign the values to the transpose array
+        } // get the current row
 
-    for (int i = 0; i < row; i++)
-    {
-        delete[] current_row[i]; // free the memory allocated for each row
-    }
-    delete[] current_row; // free the memory allocated for the array of pointers
 
-    static Matrix trans(trans_array, row, col); // create the transpose matrix using the constructor
-    return trans;
+    }
 }
 
+Matrix Matrix::operator+(Matrix obj)//overloaded addition operator
+{
+    if (num_rows != obj.num_rows || num_cols != obj.num_cols)
+        throw runtime_error("cannot add matrices of different dimensions");
+
+    // create new matrix
+    Matrix m = obj;
+
+    Node* current_row = m.head;
+    Node* copy_row = head;
+
+    Node* r1 = m.head;
+    Node* r2 = head;
+
+    do {
+        do {
+
+            current_row->value = copy_row->value + current_row->value;
+            cout << current_row->value;
+            current_row = current_row->next_col;
+            copy_row = copy_row->next_col;
+
+        } while (copy_row->next_col != nullptr);
+        r1 = r1->next_row;
+
+        r2 = r2->next_row;
+
+        current_row = r1;
+        copy_row = r2;
+
+    } while (copy_row->next_row != nullptr);
+
+    return m;
+
+}
+
+
+Matrix Matrix::operator*(Matrix obj)//matrix multiplication
+{
+    if (num_cols != obj.num_rows)
+        throw runtime_error("cannot multiply these 2 matrices, col num of first needs to match row num of the other");
+
+    int array[MAX][MAX] = { 0 };
+
+    Matrix m(array, num_rows, obj.num_cols);
+
+    // get the transpose of obj, call it R
+    // two iterators, one for the calling object and the other for obj
+    // as they iterate thru the row, they multiply and add their values
+    // once reaches the end of the row, all this is one value
+    // third iterator points to head of new matrix, adds that value to the first element of the new matrix
+    // this third iterator goes to the next element
+    // repeat this process, except R's iterator iterates to the next row, while the calling object's restarts. this whole process
+    // is repeated until iterator to new matrix goes to the next row
+    // thats when iterator to R restarts, and iterator to calling object goes to next row and (automatically) iterator to new mayrix foes to nextrow
+
+    Matrix R = obj.transpose();
+
+    Node* current_row = m.head;
+    Node* copy_row = head;
+    Node* copy_row2 = R.head;
+
+    Node* rstart1 = m.head;
+    Node* rstart2 = head;
+    Node* rstart3 = R.head;
+
+
+    do {
+
+        do {
+
+            do {
+
+                current_row->value += copy_row->value * copy_row2->value;
+
+                copy_row = copy_row->next_col;
+                copy_row2 = copy_row2->next_col;
+
+            } while (copy_row->next_col != nullptr);
+
+            current_row = current_row->next_col;
+
+            rstart3 = rstart3->next_row;
+            copy_row2 = rstart3;
+            copy_row = rstart2;
+        } while (current_row->next_col != nullptr);
+
+        copy_row2 = R.head;
+        rstart2 = rstart2->next_row;
+        copy_row = rstart2;
+        rstart1 = rstart1->next_row;
+        current_row = rstart1;
+    } while (current_row->next_row && current_row->next_col != nullptr);
+
+    return m;
+}
 
 void Matrix::copyFrom(const Matrix& obj)//copies 
 {
@@ -281,21 +369,41 @@ void Matrix::copyFrom(const Matrix& obj)//copies
 
 int Matrix::getElement(int row, int col) const //returns a element based on the given row & column
 {
+    if (row > getRowNum() || col > getColNum())
+    {
+        throw runtime_error("ERROR: The value is out of bounds.");
+    }
 
+    Node* getEl = head;
+    
+    for (int i = 0; i < col; i++)
+    {
+        getEl = getEl->next_col;
+    }
+
+    for (int j = 0; j < row; j++)
+    {
+        getEl = getEl->next_row;
+    }
+
+    return getEl->value;
 }
 
 ostream& operator<<(ostream& output, const Matrix& mat)//overloaded stream insertion
 {
     MyIterator it = mat.begin();
+    int count = 0;
 
-    for (int i = 0; i < mat.getRowNum(); i++)
+    while (it != mat.end())
     {
-        for (int j = 0; j < mat.getColNum(); j++)
+        output << *it << " ";
+        it++;
+        count++;
+        if (count == mat.getColNum())
         {
-            output << *it << " ";
+            count = 0;
+            output << endl; 
         }
-        
-        output << endl;
     }
 
     return output;
